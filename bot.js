@@ -270,7 +270,7 @@ async function sendGambleSticky(channel) {
     const embed = new EmbedBuilder()
       .setTitle('🎰 Gamble')
       .setDescription(
-        '**Win chance:** 50% win\n' +
+        '**Win chance:** 40% win\n' +
         '**Minimum bet:** $1,000,000\n' +
         '**Maximum bet:** ' + (bal !== null ? `$${bal.toLocaleString()}` : 'N/A')
       )
@@ -640,7 +640,7 @@ discord.on('interactionCreate', async (interaction) => {
         gambleOverride = null;
       }
     } else {
-      won = Math.random() < 0.45;
+      won = Math.random() < 0.40;
     }
     if (won) {
       const payAmount = amount * GAMBLE_WIN_MULTIPLIER;
