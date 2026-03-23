@@ -1,0 +1,15 @@
+{
+  "name": "nuekkis-afk-bot",
+  "version": "3.0.0",
+  "description": "A Minecraft AFK bot with Discord slash commands, Microsoft authentication, auto-reconnect, and Railway deployment support.",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "author": "nuekkis",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "mineflayer": "^4.35.0"
+  }
+}
